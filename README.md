@@ -1,5 +1,7 @@
 # Git CMS
 
+[English](README.md) | [日本語](README.ja.md)
+
 **Fork it. Write on GitHub. Publish your blog.** A Python-powered blog that turns Markdown posts into HTML and JSON, then deploys to GitHub Pages from the same repository.
 
 No database, separate publishing repository, personal access token, or custom admin interface is needed.
