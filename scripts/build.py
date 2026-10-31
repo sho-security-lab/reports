@@ -1,13 +1,16 @@
-"""公開記事のMarkdownをJSONへ変換する。"""
+"""MarkdownからブログのHTML・JSON・画像を生成する。"""
 
 import json
 import re
 import shutil
 import sys
 from datetime import date
+from html import escape
 from pathlib import Path
+from string import Template
 
 import yaml
+from markdown_it import MarkdownIt
 
 
 class ArticleLoader(yaml.SafeLoader):
@@ -39,6 +42,81 @@ ArticleLoader.add_implicit_resolver(
 )
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"}
+THEME = Path(__file__).resolve().parent.parent / "theme"
+DEFAULT_SITE = {
+    "title": "My Journal",
+    "description": "日々の記録と、考えたこと。",
+    "author": "Your Name",
+    "language": "ja",
+}
+
+
+def load_site(root):
+    file = root / "config" / "site.yaml"
+    if not file.exists():
+        return DEFAULT_SITE.copy()
+    site = yaml.load(file.read_text(encoding="utf-8"), Loader=ArticleLoader)
+    if not isinstance(site, dict):
+        raise ValueError("config/site.yaml は設定のマッピングにしてください")
+    settings = {key: site.get(key, default) for key, default in DEFAULT_SITE.items()}
+    for key, value in settings.items():
+        if not isinstance(value, str):
+            raise ValueError(f"config/site.yaml の {key} は文字列にしてください")
+    if not settings["title"].strip():
+        raise ValueError("config/site.yaml の title が必要です")
+    if not re.fullmatch(r"[a-zA-Z]+(?:-[a-zA-Z0-9]+)*", settings["language"]):
+        raise ValueError("config/site.yaml の language は ja、en などで指定してください")
+    return settings
+
+
+def render_blog(posts, site):
+    template = Template((THEME / "page.html").read_text(encoding="utf-8"))
+    # 生HTMLを無効にし、リンクの危険なスキームもMarkdownItの検証で除外する。
+    markdown = MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"])
+
+    def page(title, description, content, prefix=""):
+        return template.substitute(
+            language=escape(site["language"], quote=True),
+            page_title=escape(title),
+            description=escape(description, quote=True),
+            site_title=escape(site["title"]),
+            author=escape(site["author"]),
+            prefix=prefix,
+            content=content,
+        )
+
+    def tags(post):
+        return "".join(f'<span class="tag">{escape(tag)}</span>' for tag in post["tags"])
+
+    rows = []
+    for number, post in enumerate(posts, start=1):
+        rows.append(
+            f'<li class="entry"><span class="entry-number">{number:02d}</span><article>'
+            f'<div class="entry-meta"><time datetime="{post["publishedAt"]}">{post["publishedAt"]}</time>'
+            f'{tags(post)}</div><h2><a href="posts/{post["slug"]}.html">{escape(post["title"])}</a></h2>'
+            f'<p>{escape(post["description"])}</p></article>'
+            f'<a class="entry-arrow" href="posts/{post["slug"]}.html" aria-label="{escape(post["title"], quote=True)}を読む">↗</a></li>'
+        )
+    listing = '<ol class="entries">' + "".join(rows) + "</ol>" if rows else '<p class="empty">まだ記事はありません。</p>'
+    content = (
+        '<section class="intro"><p class="eyebrow">THE JOURNAL</p>'
+        f'<h1>{escape(site["title"])}</h1><p class="intro-description">{escape(site["description"])}</p></section>'
+        f'<section aria-label="記事一覧"><div class="section-label"><h2>記事一覧</h2><span>{len(posts):02d} POSTS</span></div>{listing}</section>'
+    )
+    files = {"index.html": page(site["title"], site["description"], content)}
+    for post in posts:
+        content = (
+            '<article class="post"><a class="back" href="../">← 記事一覧に戻る</a>'
+            f'<header class="post-header"><div class="entry-meta"><time datetime="{post["publishedAt"]}">{post["publishedAt"]}</time>'
+            f'{tags(post)}</div><h1>{escape(post["title"])}</h1>'
+            f'<p class="post-description">{escape(post["description"])}</p></header>'
+            f'<div class="prose">{markdown.render(post["body"])}</div></article>'
+        )
+        files[f'posts/{post["slug"]}.html'] = page(
+            f'{post["title"]} | {site["title"]}', post["description"], content, "../"
+        )
+    files["theme.css"] = (THEME / "style.css").read_text(encoding="utf-8")
+    return files
 
 
 def parse_post(source, slug):
@@ -111,6 +189,7 @@ def write_json(file, value):
 
 def build(root=None):
     root = Path.cwd() if root is None else Path(root)
+    site = load_site(root)
     posts = []
     images = []
     for entry in sorted((root / "posts").iterdir()):
@@ -131,6 +210,7 @@ def build(root=None):
         images.extend(collect_images(assets / post["slug"], Path("assets") / post["slug"]))
     posts.sort(key=lambda post: post["slug"])
     posts.sort(key=lambda post: post["publishedAt"], reverse=True)
+    pages = render_blog(posts, site)
     # 入力検証が終わってから、以前の生成物を置き換える。
     output = root / "dist"
     if output.is_symlink():
@@ -141,6 +221,8 @@ def build(root=None):
     write_json(output / "posts.json", [{key: value for key, value in post.items() if key != "body"} for post in posts])
     for post in posts:
         write_json(output / "posts" / f"{post['slug']}.json", post)
+    for name, content in pages.items():
+        (output / name).write_text(content, encoding="utf-8")
     for source, target in images:
         destination = output / target
         destination.parent.mkdir(parents=True, exist_ok=True)

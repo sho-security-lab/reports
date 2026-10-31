@@ -1,54 +1,50 @@
 # Git CMS
 
-非公開のGitHubリポジトリでMarkdown記事を管理し、公開対象のJSONと画像だけを別の公開リポジトリのGitHub Pagesへ配信します。専用の投稿画面やデータベースは不要です。
+**フォークして、GitHubで記事を書くだけ。** PythonがMarkdownからブログとJSONを生成し、同じリポジトリのGitHub Pagesへ公開します。
+
+投稿・ブログ表示・JSON配信を1つのリポジトリで管理できます。データベース、専用の管理画面、別の配信用リポジトリ、個人用トークンの設定は不要です。
 
 ```text
-非公開リポジトリで記事を保存
-  → GitHub ActionsでJSONを生成
-  → 公開専用リポジトリへ生成物を転送
-  → GitHub Pagesで配信
+GitHubで記事を保存
+  → GitHub ActionsでPythonを実行
+  → dist/ にHTML・JSON・画像を生成
+  → このリポジトリのGitHub Pagesへ公開
 ```
 
-## 初回設定
+## フォークして始める
 
-### 1. 記事用・公開用リポジトリを用意する
+1. このリポジトリを自分のアカウントへ **Fork** します。GitHub Freeで公開する場合は **Public** にしてください。
+2. フォーク先の **Actions** タブで、ワークフローが無効になっている場合は有効にします。
+3. **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に設定します。
+4. `config/site.yaml` のブログ名・説明・著者名を編集し、デフォルトブランチ（通常は `main`）へ保存します。
+5. **Actions → Build and publish blog** が成功したら、**Settings → Pages** に表示されるURLを開きます。
 
-- このプロジェクトを記事用の **Private** リポジトリに配置します。既定ブランチは `main` にしてください。
-- 生成物だけを置く **Public** リポジトリ（例: `blog-data`）を別途作成します。READMEを付けて初期化してください。
-- 公開用リポジトリはこのCMS専用にしてください。配信時に `main` の内容を生成物で置き換えます。
+手動で公開する場合は **Actions → Build and publish blog → Run workflow** から、デフォルトブランチを選んで実行します。フォークしただけでは公開処理は始まりません。
 
-GitHub Freeでも、この組み合わせで利用できます。非公開リポジトリのActionsにはプランごとの利用枠があります。
+通常の公開URLは `https://<ユーザー名>.github.io/<リポジトリ名>/` です。`<ユーザー名>.github.io` という名前のリポジトリや独自ドメインでも利用できます。画面内のリンクは相対パスなので、ユーザー名・リポジトリ名をコードへ埋め込む必要はありません。
 
-### 2. 公開用リポジトリへの鍵を設定する
+公開処理はリポジトリのデフォルトブランチだけで行います。PRや他のブランチではテストとビルドのみ実行します。デフォルトブランチを変更した場合は、**Settings → Environments → github-pages** の配信許可ブランチも確認してください。
 
-手元で、この用途専用のSSH鍵を作成します（既存の鍵を上書きしないパスを指定）。
+組織のポリシーなどでActionsやPagesが制限されている場合は、管理者による設定が必要です。非公開リポジトリからのPages公開にはGitHub Proなどの対象プランが必要です。
 
-```sh
-ssh-keygen -t ed25519 -C "git-cms-publish" -f ./git-cms-publish -N ""
+## ブログの設定
+
+`config/site.yaml` を編集します。
+
+```yaml
+title: My Journal
+description: 日々の記録と、考えたこと。
+author: Your Name
+language: ja
 ```
 
-1. 公開用リポジトリの **Settings → Deploy keys → Add deploy key** に `git-cms-publish.pub` の内容を登録し、**Allow write access** を有効にします。
-2. 記事用リポジトリの **Settings → Secrets and variables → Actions → Secrets** に、`PUBLISH_DEPLOY_KEY` という名前で秘密鍵 `git-cms-publish` の内容を登録します。
-3. 同じ画面の **Variables** に `PUBLISH_REPOSITORY` を追加し、`所有者/blog-data` のように公開用リポジトリを指定します（URLではありません）。
-
-鍵はリポジトリ外で作成し、コミットしないでください。記事用リポジトリの `GITHUB_TOKEN` だけでは、別リポジトリへの書き込みはできないため専用鍵を使います。
-
-### 3. GitHub Pagesを有効にする
-
-1. 記事用リポジトリの **Actions → Build and publish blog JSON → Run workflow** を実行します。
-2. 公開用リポジトリに生成物が届いたら、**Settings → Pages** を開きます。
-3. **Source: Deploy from a branch**、**Branch: main**、**Folder: / (root)** を選択して保存します。
-4. Pagesのデプロイが完了したら、同画面に表示されるURLにアクセスします。ルートページは作成しないため、末尾に `posts.json` を付けて確認してください。
-
-例: `https://OWNER.github.io/blog-data/posts.json`
-
-設定していない状態でもローカルビルドとPRの検証はできます。mainへの配信は設定不足をエラーとして通知します。サンプルの `hello-world.md` は公開対象なので、最初の配信前に編集するか `draft: true` にしてください。
+`language` はHTMLの言語属性です。画面の案内文は日本語です。デザインを変更する場合は `theme/page.html` と `theme/style.css` を編集してください。スマートフォンとダークモードに対応しています。外部のフォントやJavaScriptの読み込みはありません。
 
 ## GitHubの画面から投稿する
 
-1. **記事用の非公開リポジトリ**で `posts` フォルダを開きます。
+1. フォークしたリポジトリの `posts` フォルダを開きます。
 2. **Add file → Create new file** で `my-first-post.md` のようなファイルを作成します。
-3. 次の内容を入力します。
+3. 次の形式で記事を書きます。
 
 ```markdown
 ---
@@ -66,38 +62,61 @@ draft: false
 Markdownで記事を書けます。
 ```
 
-4. **Commit changes** から `main` に保存します。ブランチ保護がある場合はPRを作り、mainへマージします。
-5. Actionsと公開用リポジトリのPagesデプロイが完了すると、公開JSONに反映されます。
+4. **Commit changes** でデフォルトブランチへ保存します。ブランチ保護がある場合はPRを作り、マージしてください。
+5. Actionsが成功すると、ブログとJSONが更新されます。
 
-- ファイル名がURL用の `slug` になります。半角小文字英数字とハイフンを使ってください。
+- ファイル名が記事の `slug` になります。半角小文字英数字とハイフンを使ってください。
 - `title`、`publishedAt`、`draft`、本文は必須です。`description` と `tags` は省略できます。
-- `draft: true` は非公開、`draft: false` は公開です。指定漏れ・文字列の `"false"` はエラーにし、誤公開を防ぎます。
-- `publishedAt` は表示・並び順のための日付です。予約投稿の機能はありません。未来の日付でも `draft: false` なら公開されます。
-- 記事の更新はファイルを編集して保存します。公開停止は `draft: true` に変更するか、記事ファイルを削除します。
-- 公開停止後も、すでにダウンロードされたデータや配信キャッシュは回収できません。
-- `posts` 直下の `.md` が対象です。下書きのサンプルは `posts/draft-example.md` にあります。
+- `posts` 直下の `.md` ファイルが対象です。
+- `draft: true` の記事はブログ・JSON・配信画像から除外します。公開する場合は `draft: false` にします。
+- `draft` の指定漏れや文字列の `"false"` はエラーにします。
+- `publishedAt` は表示と並び順のための日付です。予約投稿ではなく、未来の日付でも `draft: false` なら公開されます。
+- 更新は記事ファイルの編集、公開停止は `draft: true` への変更またはファイルの削除で行います。
+- 見出し・リスト・引用・リンク・画像・コードブロック・表・取り消し線に対応します。本文に書いた生HTMLは実行せず、文字として表示します。
 
-## 画像
+**公開リポジトリでは、下書きの本文や画像もGitHub上のファイル・編集履歴から閲覧できます。** `draft` はブログへの掲載を制御する設定で、秘密の情報を保存するための機能ではありません。公開停止後も、すでに取得されたデータや配信キャッシュは回収できません。
 
-記事ごとに `assets/<slug>/` フォルダへ画像をアップロードします。例えば `posts/my-first-post.md` の画像は `assets/my-first-post/cover.png` です。
+サンプルの `posts/hello-world.md` は公開対象です。自分の記事に編集するか削除してください。`posts/draft-example.md` は下書きの見本です。
 
-GitHubの **Add file → Upload files** で追加できます。記事が公開されると、その記事の画像フォルダ内のPNG/JPEG/GIF/WebP/AVIFも公開されます。公開しない画像を公開記事のフォルダに置かないでください。下書き記事の画像は配信しません。記事を非公開化すると、次の配信で生成物から画像も削除します。
+## 画像を追加する
 
-本文には配信先のURLを記載すると、ブログ側でそのまま扱えます。
+記事ごとに `assets/<slug>/` フォルダへ画像をアップロードします。
+
+例: `posts/my-first-post.md` の画像は `assets/my-first-post/cover.png` に配置します。GitHubの **Add file → Upload files** から追加できます。
+
+記事本文には次のように相対パスで記載してください。GitHubのMarkdown表示と公開ブログの両方で同じ画像を参照できます。
 
 ```markdown
-![説明](https://OWNER.github.io/blog-data/assets/my-first-post/cover.png)
+![説明](../assets/my-first-post/cover.png)
 ```
 
-## 公開JSON
+公開記事の画像フォルダにあるPNG/JPEG/GIF/WebP/AVIFを配信します。下書き記事の画像や、その他の拡張子のファイルは生成物に含めません。記事を非公開化・削除すると、次回の配信でその記事のHTML・JSON・画像も除去します。
+
+記事同士をリンクする場合は `[別の記事](other-post.html)` のように、公開後のHTMLファイル名を指定してください。
+
+## 公開ファイルとJSON
+
+```text
+dist/
+├── index.html                 # 記事一覧
+├── theme.css                  # ブログのスタイル
+├── .nojekyll
+├── posts.json                 # 記事一覧JSON（本文なし）
+├── posts/
+│   ├── hello-world.html        # 記事ページ
+│   └── hello-world.json        # 記事JSON（Markdown本文あり）
+└── assets/
+    └── hello-world/            # 公開記事の画像（存在する場合）
+```
+
+`dist/` は自動生成するため、Gitにはコミットしません。GitHub Actionsも同じコマンドで生成し、このフォルダの中身だけをPagesへ配信します。
+
+JSONは他のWebサイトやアプリからも利用できます。
 
 | パス | 内容 |
 | --- | --- |
-| `posts.json` | 公開日の降順の記事一覧。本文は含みません |
+| `posts.json` | 公開日の降順の記事一覧。同日の場合はslug順。本文なし |
 | `posts/<slug>.json` | 記事のメタデータとMarkdown本文 |
-| `assets/<slug>/...` | 公開記事の画像 |
-
-記事JSONの例:
 
 ```json
 {
@@ -110,27 +129,11 @@ GitHubの **Add file → Upload files** で追加できます。記事が公開�
 }
 ```
 
-ブログ側の取得例:
-
-```js
-const base = 'https://OWNER.github.io/blog-data/';
-const response = await fetch(new URL('posts.json', base));
-if (!response.ok) throw new Error('記事一覧を取得できませんでした');
-const posts = await response.json();
-
-if (posts.length > 0) {
-  const detail = await fetch(new URL(`posts/${posts[0].slug}.json`, base));
-  if (!detail.ok) throw new Error('記事を取得できませんでした');
-  const post = await detail.json();
-  console.log(post.title, post.body);
-}
-```
-
-本文はMarkdownのまま返します。ブログ側でMarkdownをHTMLに変換し、表示時にはHTMLをサニタイズしてください。このプロジェクトにはブログの表示画面は含みません。
+記事本文内の相対URLは、`posts/<slug>.html` または `posts/<slug>.json` のURLを基準に解決してください。別のアプリでMarkdownを表示するときも、生HTMLを無効にするなど適切に処理してください。
 
 ## ローカルで確認する
 
-Python 3.12以上を使います。YAMLの読み取りにはPyYAMLを使用します。
+Python 3.12以上を使います。
 
 ```sh
 python3 -m venv .venv
@@ -138,12 +141,21 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 python -m unittest discover -s test -v
 python scripts/build.py
+python -m http.server 8000 --directory dist
 ```
 
-`dist/` に公開対象だけを生成します。毎回作り直すため、記事を削除・非公開化した後の古いJSONは残りません。タイトルなどの公開用フィールドのみ出力し、追加のメタデータは出力しません。入力不備がある場合は配信を止め、既存の公開内容を維持します。
+Windowsでは仮想環境の有効化に `.venv\Scripts\activate` を使います。
+
+`http://localhost:8000/` を開くとブログを確認できます。記事や設定を編集した後は `python scripts/build.py` を再実行し、ブラウザを更新してください。
+
+入力やテンプレートに不備がある場合は、既存の `dist/` を置き換える前にビルドを止めます。テストやビルドが失敗した場合は配信しません。
+
+## ライセンス
+
+MIT License。フォークして利用・改変できます。[LICENSE](LICENSE) を参照してください。
 
 ## 参考
 
-- [GitHub Pagesの利用条件と公開設定](https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site)
-- [別リポジトリへの配信とDeploy keyの設定](https://github.com/peaceiris/actions-gh-pages#%EF%B8%8F-deploy-to-external-repository-external_repository)
-- [PythonのGitHub Actions設定](https://github.com/actions/setup-python)
+- [GitHub Pagesの公開設定と対応プラン](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+- [GitHub ActionsからPagesへの配信](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
+- [MarkdownのHTML処理](https://markdown-it-py.readthedocs.io/en/latest/security.html)
