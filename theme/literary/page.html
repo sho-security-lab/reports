@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="$language">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,12 +8,12 @@
   <title>$page_title</title>
   <link rel="stylesheet" href="${prefix}theme.css">
 </head>
-<body>
-  <a class="skip" href="#main">本文へ移動</a>
+<body class="$page_kind">
+  <a class="skip" href="#main">$skip_label</a>
   <div class="layout">
     <header class="site-header">
       <a class="wordmark" href="${prefix}./"><span class="mark" aria-hidden="true">●</span> $site_title</a>
-      <a class="nav-link" href="${prefix}./">記事一覧 <span aria-hidden="true">↗</span></a>
+      <a class="nav-link" href="${prefix}./"$current>$posts_label</a>
     </header>
     <main id="main">$content</main>
     <footer class="site-footer"><span>$site_title</span><span>Written by $author</span></footer>

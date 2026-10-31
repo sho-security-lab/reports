@@ -1,21 +1,21 @@
 ---
-title: はじめての記事
+title: A place to begin
 publishedAt: "2026-10-31"
-description: 小さな気づきも、忘れたくない出来事も。ここから書き始めます。
-tags: [日記, お知らせ]
+description: Small discoveries, passing thoughts, and things worth remembering. It starts here.
+tags: [Journal, News]
 draft: false
 ---
 
-新しいブログを始めました。日々の記録や、考えたことを少しずつ書いていきます。
+I started this journal to make a little room for everyday observations and unfinished thoughts.
 
-## 書き残しておきたいこと
+## Things worth keeping
 
-何気ない一日にも、あとから読み返したくなる瞬間があります。
+Even an ordinary day has moments I want to return to.
 
-- 今日、新しく知ったこと
-- 夢中になって作ったもの
-- 散歩の途中で見つけた風景
+- Something I learned today
+- Something I enjoyed making
+- A view I noticed on a walk
 
-> 完成した考えだけでなく、考えている途中のことも。
+> Not just finished ideas, but the process of finding them.
 
-まずは一つの記事から。自分のペースで続けていこうと思います。
+One post is enough to begin. The rest can follow at its own pace.

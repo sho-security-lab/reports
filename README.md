@@ -1,139 +1,170 @@
 # Git CMS
 
-**フォークして、GitHubで記事を書くだけ。** PythonがMarkdownからブログとJSONを生成し、同じリポジトリのGitHub Pagesへ公開します。
+**Fork it. Write on GitHub. Publish your blog.** A Python-powered blog that turns Markdown posts into HTML and JSON, then deploys to GitHub Pages from the same repository.
 
-投稿・ブログ表示・JSON配信を1つのリポジトリで管理できます。データベース、専用の管理画面、別の配信用リポジトリ、個人用トークンの設定は不要です。
+No database, separate publishing repository, personal access token, or custom admin interface is needed.
 
 ```text
-GitHubで記事を保存
-  → GitHub ActionsでPythonを実行
-  → dist/ にHTML・JSON・画像を生成
-  → このリポジトリのGitHub Pagesへ公開
+Save a Markdown post on GitHub
+  → GitHub Actions runs Python
+  → HTML, JSON, and images are generated in dist/
+  → GitHub Pages publishes the blog
 ```
 
-## フォークして始める
+## Quick start
 
-1. このリポジトリを自分のアカウントへ **Fork** します。GitHub Freeで公開する場合は **Public** にしてください。
-2. フォーク先の **Actions** タブで、ワークフローが無効になっている場合は有効にします。
-3. **Settings → Pages → Build and deployment → Source** を **GitHub Actions** に設定します。
-4. `config/site.yaml` のブログ名・説明・著者名を編集し、デフォルトブランチ（通常は `main`）へ保存します。
-5. **Actions → Build and publish blog** が成功したら、**Settings → Pages** に表示されるURLを開きます。
+1. **Fork** this repository. Keep your fork **public** to use GitHub Pages on GitHub Free.
+2. Open the **Actions** tab in your fork and enable workflows if prompted.
+3. Go to **Settings → Pages → Build and deployment → Source** and select **GitHub Actions**. This initial setup is required; otherwise `actions/configure-pages` fails with `Get Pages site failed / Not Found`.
+4. Edit `config/site.yaml` and commit to the default branch, usually `main`.
+5. Wait for **Actions → Build and publish blog** to succeed, then visit the URL shown in **Settings → Pages**.
 
-手動で公開する場合は **Actions → Build and publish blog → Run workflow** から、デフォルトブランチを選んで実行します。フォークしただけでは公開処理は始まりません。
+You can also run **Actions → Build and publish blog → Run workflow** on the default branch. Forking alone does not start a deployment. You do not need to add one of GitHub's suggested workflow templates.
 
-通常の公開URLは `https://<ユーザー名>.github.io/<リポジトリ名>/` です。`<ユーザー名>.github.io` という名前のリポジトリや独自ドメインでも利用できます。画面内のリンクは相対パスなので、ユーザー名・リポジトリ名をコードへ埋め込む必要はありません。
+The usual URL is `https://<username>.github.io/<repository>/`. User sites named `<username>.github.io` and custom domains also work. All internal links are relative; no username or repository name is hardcoded.
 
-公開処理はリポジトリのデフォルトブランチだけで行います。PRや他のブランチではテストとビルドのみ実行します。デフォルトブランチを変更した場合は、**Settings → Environments → github-pages** の配信許可ブランチも確認してください。
+Only the default branch deploys. Pull requests and other branches run tests and builds without publishing. If you rename the default branch, also check the allowed deployment branches under **Settings → Environments → github-pages**.
 
-組織のポリシーなどでActionsやPagesが制限されている場合は、管理者による設定が必要です。非公開リポジトリからのPages公開にはGitHub Proなどの対象プランが必要です。
+Organization policies may restrict Actions or Pages. Private repositories require a Pages-compatible plan such as GitHub Pro.
 
-## ブログの設定
+## Configure your blog
 
-`config/site.yaml` を編集します。
+Edit `config/site.yaml`:
 
 ```yaml
 title: My Journal
-description: 日々の記録と、考えたこと。
+description: Notes on everyday life and things along the way.
 author: Your Name
-language: ja
+theme: literary
+headline: |-
+  A life,
+  written down.
 ```
 
-`language` はHTMLの言語属性です。画面の案内文は日本語です。デザインを変更する場合は `theme/page.html` と `theme/style.css` を編集してください。スマートフォンとダークモードに対応しています。外部のフォントやJavaScriptの読み込みはありません。
+The interface, date labels, examples, and build messages are in English. No language setting or translation system is required.
 
-## GitHubの画面から投稿する
+### Choose a theme
 
-1. フォークしたリポジトリの `posts` フォルダを開きます。
-2. **Add file → Create new file** で `my-first-post.md` のようなファイルを作成します。
-3. 次の形式で記事を書きます。
+| Value | Design |
+| --- | --- |
+| `literary` (default) | Warm paper, serif typography, a large headline, a featured latest post, and a two-column list |
+| `notebook` | A sage sidebar, monthly post groups, and a date column |
+| `newspaper` | A centered masthead, edition date, bold lead story, ruled columns, and serif article text |
+
+To select the notebook theme:
+
+```yaml
+theme: notebook
+```
+
+Commit the change to apply it to both the index and article pages. Article URLs and JSON stay the same across themes. Omitting `theme` selects `literary`; an unsupported value stops the build before replacing existing output.
+
+`headline` sets the large heading in `literary`. Use `|-` as shown above for line breaks. The notebook and newspaper themes do not display this setting. The blog name is always controlled by `title`.
+
+All three themes adapt to narrow screens and the system's dark-mode preference. They use system fonts and do not load external fonts, JavaScript, or icon libraries.
+
+To customize the design, edit `page.html` and `style.css` in `theme/literary/`, `theme/notebook/`, or `theme/newspaper/`. Shared article styles live in `theme/shared.css`.
+
+### Newspaper edition
+
+Set `theme: newspaper` for a newspaper-style front page. The latest post becomes the lead story, the next two appear in the side column, and additional posts form a three-column list. With one post, the side column introduces your journal using the configured description and author. With no posts, the page shows an empty state.
+
+The masthead's date comes from the latest published post on the index and from the current article on detail pages. It is not the build date, so rebuilding without new posts does not create a fictional new edition. Article pages use a single readable text column with a drop cap. The front page stacks into one column on narrow screens.
+
+## Write a post on GitHub
+
+1. Open the `posts` directory in your fork.
+2. Choose **Add file → Create new file** and name it something like `my-first-post.md`.
+3. Write your post in this format:
 
 ```markdown
 ---
-title: はじめての記事
+title: My first post
 publishedAt: "2026-10-31"
-description: 記事一覧に表示する説明です。
-tags: [日記, お知らせ]
+description: A short introduction for the article list.
+tags: [Journal, News]
 draft: false
 ---
 
-ここから本文です。
+Your article starts here.
 
-## 見出し
+## A heading
 
-Markdownで記事を書けます。
+Write your content in Markdown.
 ```
 
-4. **Commit changes** でデフォルトブランチへ保存します。ブランチ保護がある場合はPRを作り、マージしてください。
-5. Actionsが成功すると、ブログとJSONが更新されます。
+4. **Commit changes** to the default branch, or merge a pull request if branch protection requires it.
+5. The blog and JSON update after the workflow succeeds.
 
-- ファイル名が記事の `slug` になります。半角小文字英数字とハイフンを使ってください。
-- `title`、`publishedAt`、`draft`、本文は必須です。`description` と `tags` は省略できます。
-- `posts` 直下の `.md` ファイルが対象です。
-- `draft: true` の記事はブログ・JSON・配信画像から除外します。公開する場合は `draft: false` にします。
-- `draft` の指定漏れや文字列の `"false"` はエラーにします。
-- `publishedAt` は表示と並び順のための日付です。予約投稿ではなく、未来の日付でも `draft: false` なら公開されます。
-- 更新は記事ファイルの編集、公開停止は `draft: true` への変更またはファイルの削除で行います。
-- 見出し・リスト・引用・リンク・画像・コードブロック・表・取り消し線に対応します。本文に書いた生HTMLは実行せず、文字として表示します。
+- The filename becomes the article's `slug`. Use lowercase letters, numbers, and hyphens.
+- `title`, `publishedAt`, `draft`, and a nonempty body are required. `description` and `tags` are optional.
+- Only `.md` files directly inside `posts/` are included.
+- Use `draft: true` to exclude an article and its images from the generated blog and JSON. Change it to `draft: false` to publish.
+- Missing `draft` values and strings such as `"false"` cause an error.
+- `publishedAt` controls display and sorting, not scheduling. A future-dated article with `draft: false` is published immediately.
+- Edit a file to update it. Set `draft: true` or delete the file to remove it from the next deployment.
+- Headings, lists, quotes, links, images, fenced code, tables, and strikethrough are supported. Raw HTML is escaped instead of executed.
 
-**公開リポジトリでは、下書きの本文や画像もGitHub上のファイル・編集履歴から閲覧できます。** `draft` はブログへの掲載を制御する設定で、秘密の情報を保存するための機能ではありません。公開停止後も、すでに取得されたデータや配信キャッシュは回収できません。
+**In a public repository, draft files, images, and commit history remain visible on GitHub.** The draft flag controls inclusion in the blog; it does not make repository content private. Removing a published article cannot recall downloaded copies or caches.
 
-サンプルの `posts/hello-world.md` は公開対象です。自分の記事に編集するか削除してください。`posts/draft-example.md` は下書きの見本です。
+`posts/hello-world.md` is a published example; edit or delete it before using your blog. `posts/draft-example.md` demonstrates a draft.
 
-## 画像を追加する
+## Add images
 
-記事ごとに `assets/<slug>/` フォルダへ画像をアップロードします。
+Upload article images to `assets/<slug>/`. For `posts/my-first-post.md`, use a path such as `assets/my-first-post/cover.png`.
 
-例: `posts/my-first-post.md` の画像は `assets/my-first-post/cover.png` に配置します。GitHubの **Add file → Upload files** から追加できます。
-
-記事本文には次のように相対パスで記載してください。GitHubのMarkdown表示と公開ブログの両方で同じ画像を参照できます。
+You can upload files through GitHub's **Add file → Upload files**. Reference them relative to the article:
 
 ```markdown
-![説明](../assets/my-first-post/cover.png)
+![A description](../assets/my-first-post/cover.png)
 ```
 
-公開記事の画像フォルダにあるPNG/JPEG/GIF/WebP/AVIFを配信します。下書き記事の画像や、その他の拡張子のファイルは生成物に含めません。記事を非公開化・削除すると、次回の配信でその記事のHTML・JSON・画像も除去します。
+This path works in both GitHub's Markdown view and the published article.
 
-記事同士をリンクする場合は `[別の記事](other-post.html)` のように、公開後のHTMLファイル名を指定してください。
+PNG, JPEG, GIF, WebP, and AVIF files in published articles' folders are copied into the output. Draft images and other file types are excluded. Removing or unpublishing an article also removes its generated HTML, JSON, and images on the next successful deployment.
 
-## 公開ファイルとJSON
+Link to another article with its generated filename, such as `[Another post](other-post.html)`.
+
+## Generated output and JSON
 
 ```text
 dist/
-├── index.html                 # 記事一覧
-├── theme.css                  # ブログのスタイル
+├── index.html                 # Article index
+├── theme.css                  # Selected theme and shared styles
 ├── .nojekyll
-├── posts.json                 # 記事一覧JSON（本文なし）
+├── posts.json                 # Article summaries, without bodies
 ├── posts/
-│   ├── hello-world.html        # 記事ページ
-│   └── hello-world.json        # 記事JSON（Markdown本文あり）
+│   ├── hello-world.html        # Article page
+│   └── hello-world.json        # Article metadata and Markdown body
 └── assets/
-    └── hello-world/            # 公開記事の画像（存在する場合）
+    └── hello-world/            # Images, when present
 ```
 
-`dist/` は自動生成するため、Gitにはコミットしません。GitHub Actionsも同じコマンドで生成し、このフォルダの中身だけをPagesへ配信します。
+`dist/` is generated and ignored by Git. GitHub Actions runs the same build command and publishes only this directory.
 
-JSONは他のWebサイトやアプリからも利用できます。
+Other websites and applications can consume the JSON:
 
-| パス | 内容 |
+| Path | Contents |
 | --- | --- |
-| `posts.json` | 公開日の降順の記事一覧。同日の場合はslug順。本文なし |
-| `posts/<slug>.json` | 記事のメタデータとMarkdown本文 |
+| `posts.json` | Summaries sorted newest first, then by slug for equal dates |
+| `posts/<slug>.json` | Article metadata and Markdown body |
 
 ```json
 {
   "slug": "hello-world",
-  "title": "はじめての記事",
+  "title": "My first post",
   "publishedAt": "2026-10-31",
-  "description": "記事の説明",
-  "tags": ["日記"],
-  "body": "## 見出し\n\nMarkdownの本文です。"
+  "description": "A short introduction.",
+  "tags": ["Journal"],
+  "body": "## A heading\n\nYour content goes here."
 }
 ```
 
-記事本文内の相対URLは、`posts/<slug>.html` または `posts/<slug>.json` のURLを基準に解決してください。別のアプリでMarkdownを表示するときも、生HTMLを無効にするなど適切に処理してください。
+Resolve relative URLs in Markdown against the article's `posts/<slug>.html` or `posts/<slug>.json` URL. If you render the Markdown elsewhere, disable raw HTML or sanitize the output appropriately.
 
-## ローカルで確認する
+## Run locally
 
-Python 3.12以上を使います。
+Use Python 3.12 or newer:
 
 ```sh
 python3 -m venv .venv
@@ -144,18 +175,18 @@ python scripts/build.py
 python -m http.server 8000 --directory dist
 ```
 
-Windowsでは仮想環境の有効化に `.venv\Scripts\activate` を使います。
+On Windows, activate the environment with `.venv\Scripts\activate` instead.
 
-`http://localhost:8000/` を開くとブログを確認できます。記事や設定を編集した後は `python scripts/build.py` を再実行し、ブラウザを更新してください。
+Open `http://localhost:8000/`. After changing posts, configuration, or theme files, rerun `python scripts/build.py` and refresh the page.
 
-入力やテンプレートに不備がある場合は、既存の `dist/` を置き換える前にビルドを止めます。テストやビルドが失敗した場合は配信しません。
+Invalid inputs or templates stop the build before replacing previous output. Failed tests or builds do not deploy.
 
-## ライセンス
+## License
 
-MIT License。フォークして利用・改変できます。[LICENSE](LICENSE) を参照してください。
+MIT License. See [LICENSE](LICENSE).
 
-## 参考
+## References
 
-- [GitHub Pagesの公開設定と対応プラン](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
-- [GitHub ActionsからPagesへの配信](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
-- [MarkdownのHTML処理](https://markdown-it-py.readthedocs.io/en/latest/security.html)
+- [GitHub Pages setup and supported plans](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+- [Deploying to Pages with GitHub Actions](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
+- [Markdown HTML handling](https://markdown-it-py.readthedocs.io/en/latest/security.html)

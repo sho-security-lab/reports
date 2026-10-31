@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="$description">
+  <meta name="color-scheme" content="light dark">
+  <title>$page_title</title>
+  <link rel="stylesheet" href="${prefix}theme.css">
+</head>
+<body class="$page_kind">
+  <a class="skip" href="#main">$skip_label</a>
+  <div class="layout">
+    <aside class="sidebar">
+      <a class="monogram" href="${prefix}./" aria-label="$site_title">$initials</a>
+      <a class="wordmark" href="${prefix}./">$site_title</a>
+      <p class="site-description">$site_description</p>
+      <nav aria-label="$navigation_label"><a class="nav-link" href="${prefix}./"$current>$posts_label</a></nav>
+      <p class="sidebar-author">Written by $author</p>
+    </aside>
+    <main id="main">$content</main>
+  </div>
+</body>
+</html>

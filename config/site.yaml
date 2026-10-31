@@ -1,4 +1,7 @@
 title: My Journal
-description: 日々の記録と、考えたこと。
+description: Notes on everyday life and things along the way.
 author: yabuki-shodai
-language: ja
+theme: literary
+headline: |-
+  A life,
+  written down.
