@@ -6,6 +6,7 @@ import shutil
 import sys
 from datetime import date
 from html import escape
+from html.parser import HTMLParser
 from itertools import groupby
 from pathlib import Path
 from string import Template
@@ -63,6 +64,54 @@ MONTH_NAMES = (
 )
 
 
+class ParagraphPreview(HTMLParser):
+    """Collect introductory prose without markup, lists, quotes, or code blocks."""
+
+    def __init__(self):
+        super().__init__()
+        self.paragraphs = []
+        self.current = None
+        self.blocked = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"pre", "blockquote", "ul", "ol", "table"}:
+            self.blocked += 1
+        if tag == "p" and not self.blocked and len(self.paragraphs) < 2:
+            self.current = []
+        elif tag == "br" and self.current is not None:
+            self.current.append(" ")
+
+    def handle_data(self, data):
+        if self.current is not None:
+            self.current.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "p" and self.current is not None:
+            text = " ".join("".join(self.current).split())
+            if text:
+                self.paragraphs.append(text)
+            self.current = None
+        if tag in {"pre", "blockquote", "ul", "ol", "table"}:
+            self.blocked = max(0, self.blocked - 1)
+
+
+def render_preview(html):
+    parser = ParagraphPreview()
+    parser.feed(html)
+    paragraphs = []
+    remaining = 640
+    for text in parser.paragraphs:
+        truncated = len(text) > remaining
+        if truncated:
+            text = text[:remaining].rsplit(" ", 1)[0] or text[:remaining]
+            text += "…"
+        paragraphs.append(f"<p>{escape(text)}</p>")
+        remaining -= len(text)
+        if truncated or remaining <= 0:
+            break
+    return '<div class="entry-excerpt">' + "".join(paragraphs) + '</div>' if paragraphs else ""
+
+
 def load_site(root):
     file = root / "config" / "site.yaml"
     if not file.exists():
@@ -118,7 +167,7 @@ def render_blog(posts, site):
     def tags(post):
         return "".join(f'<span class="tag">{escape(tag)}</span>' for tag in post["tags"])
 
-    def entry(post, heading):
+    def entry(post, heading, featured=False):
         published = date.fromisoformat(post["publishedAt"])
         if theme == "notebook":
             weekday = ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")[published.weekday()]
@@ -133,11 +182,13 @@ def render_blog(posts, site):
                 f'<div class="entry-meta"><time datetime="{post["publishedAt"]}">{post["publishedAt"]}</time>'
                 f'<div class="entry-tags">{tags(post)}</div></div>'
             )
+        preview = render_preview(markdown.render(post["body"])) if theme == "newspaper" and featured else ""
+        read_label = "Read more" if theme == "newspaper" else labels["read"]
         return (
             f'<li class="entry">{stamp}{meta if theme != "notebook" else ""}'
             f'<div class="entry-copy"><{heading}><a href="posts/{post["slug"]}.html">{escape(post["title"])}</a></{heading}>'
-            f'<p>{escape(post["description"])}</p>{meta if theme == "notebook" else ""}</div>'
-            f'<a class="entry-link" href="posts/{post["slug"]}.html" aria-label="{escape(labels["read_title"].format(title=post["title"]), quote=True)}">{labels["read"]}</a></li>'
+            f'<p class="entry-deck">{escape(post["description"])}</p>{preview}{meta if theme == "notebook" else ""}</div>'
+            f'<a class="entry-link" href="posts/{post["slug"]}.html" aria-label="{escape(labels["read_title"].format(title=post["title"]), quote=True)}">{read_label}</a></li>'
         )
 
     empty = f'<p class="empty">{labels["empty"]}</p>'
@@ -161,7 +212,7 @@ def render_blog(posts, site):
         content = f'<header class="index-header"><h1>{labels["posts"]}</h1></header>' + ("".join(months) if posts else empty)
     else:
         if posts:
-            lead = '<ol class="lead-stories">' + entry(posts[0], "h2") + '</ol>'
+            lead = '<ol class="lead-stories">' + entry(posts[0], "h2", featured=True) + '</ol>'
             if len(posts) > 1:
                 sidebar = '<aside class="edition-sidebar"><h2 class="section-title">In this edition</h2><ol class="secondary-stories">'
                 sidebar += "".join(entry(post, "h3") for post in posts[1:3]) + '</ol></aside>'
@@ -176,7 +227,7 @@ def render_blog(posts, site):
                 listing += "".join(entry(post, "h3") for post in posts[3:]) + '</ol></section>'
         else:
             listing = empty
-        content = '<header class="front-label"><h1>Front page</h1><p>Stories, notes &amp; observations</p></header>' + listing
+        content = '<h1 class="front-label">Front page</h1>' + listing
     files = {"index.html": page(site["title"], site["description"], content)}
     for post in posts:
         content = (

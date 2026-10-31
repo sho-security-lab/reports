@@ -69,9 +69,11 @@ To customize the design, edit `page.html` and `style.css` in `theme/literary/`, 
 
 ### Newspaper edition
 
-Set `theme: newspaper` for a newspaper-style front page. The latest post becomes the lead story, the next two appear in the side column, and additional posts form a three-column list. With one post, the side column introduces your journal using the configured description and author. With no posts, the page shows an empty state.
+Set `theme: newspaper` for a newspaper-style front page with a compact masthead and fine dividing rules. The latest post becomes the lead story with an italic introduction and an automatic excerpt, the next two appear in the side column, and additional posts form a three-column list. With one post, the side column introduces your journal using the configured description and author. With no posts, the page shows an empty state.
 
-The masthead's date comes from the latest published post on the index and from the current article on detail pages. It is not the build date, so rebuilding without new posts does not create a fictional new edition. Article pages use a single readable text column with a drop cap. The front page stacks into one column on narrow screens.
+The excerpt uses the first two prose paragraphs, up to 640 characters. Headings, lists, quotes, code blocks, images, and markup are excluded. No extra metadata is needed, and JSON still contains the full Markdown body.
+
+The masthead's date comes from the latest published post on the index and from the current article on detail pages. It is not the build date, so rebuilding without new posts does not create a fictional new edition. Article pages use a comfortable single text column with an italic introduction. The front page stacks into one column on narrow screens.
 
 ## Write a post on GitHub
 
