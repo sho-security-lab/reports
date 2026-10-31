@@ -220,8 +220,8 @@ class BuildTests(unittest.TestCase):
                             resolved = urlparse(urljoin(base + name, href)).path
                             self.assertTrue(resolved.startswith(urlparse(base).path))
                             self.assertTrue((output / resolved.removeprefix(urlparse(base).path)).exists())
-            self.assertEqual(snapshots[0], snapshots[1])
-            self.assertNotEqual(styles[0], styles[1])
+            self.assertTrue(all(snapshot == snapshots[0] for snapshot in snapshots[1:]))
+            self.assertEqual(len(set(styles)), len(THEMES))
 
     def test_unsupported_theme_keeps_previous_output(self):
         with tempfile.TemporaryDirectory(prefix="git-cms-") as directory:
@@ -236,7 +236,7 @@ class BuildTests(unittest.TestCase):
                     build(root)
                 self.assertEqual((root / "dist/index.html").read_bytes(), previous)
 
-    def test_english_ui_in_both_themes(self):
+    def test_english_ui_in_all_themes(self):
         post = parse_post(article(), "hello")
         for theme in sorted(THEMES):
             with self.subTest(theme=theme):
@@ -271,6 +271,40 @@ class BuildTests(unittest.TestCase):
                 self.assertEqual("More stories" in index, count > 3)
                 self.assertIn("Friday, October 30, 2026", pages["posts/story-1.html"])
                 self.assertNotIn("Saturday, October 31, 2026", pages["posts/story-1.html"])
+
+    def test_newspaper_preview_uses_only_introductory_prose_as_escaped_text(self):
+        import re
+
+        post = parse_post(article(), "hello")
+        post["body"] = (
+            '# Heading to skip\n\n'
+            'First *paragraph* with [a link](https://example.com) and <img src=x onerror=alert(1)>.\n\n'
+            '- List to skip\n\n> Quote to skip\n\n```html\nCode to skip\n```\n\n'
+            'Second paragraph with `inline code`.\n\nThird paragraph to skip.'
+        )
+        index = render_blog([post], dict(DEFAULT_SITE, theme="newspaper"))["index.html"]
+        preview = re.search(r'<div class="entry-excerpt">(.*?)</div>', index, re.S).group(1)
+        self.assertIn('First paragraph with a link', preview)
+        self.assertIn('&lt;img src=x onerror=alert(1)&gt;', preview)
+        self.assertIn('Second paragraph with inline code.', preview)
+        for text in ['Heading to skip', 'List to skip', 'Quote to skip', 'Code to skip', 'Third paragraph', '<img', '<a ', '<code>']:
+            self.assertNotIn(text, preview)
+        self.assertEqual(preview.count('<p>'), 2)
+        for theme in ['literary', 'notebook']:
+            self.assertNotIn('class="entry-excerpt"', render_blog([post], dict(DEFAULT_SITE, theme=theme))["index.html"])
+
+    def test_newspaper_preview_is_bounded_and_handles_posts_without_prose(self):
+        import re
+
+        post = parse_post(article(), "hello")
+        site = dict(DEFAULT_SITE, theme="newspaper")
+        post["body"] = 'word ' * 300
+        index = render_blog([post], site)["index.html"]
+        preview = re.search(r'<div class="entry-excerpt"><p>(.*?)</p></div>', index, re.S).group(1)
+        self.assertLessEqual(len(preview), 641)
+        self.assertTrue(preview.endswith('…'))
+        post["body"] = '# Heading\n\n```python\nprint(1)\n```\n\n![Only an image](../assets/hello/cover.png)'
+        self.assertNotIn('class="entry-excerpt"', render_blog([post], site)["index.html"])
 
 
 if __name__ == "__main__":
